@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Covisint IoT Workbench</title>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="/bootstrap/dist/css/bootstrap.min.css">
+		<script src="/angular/angular.min.js"></script>
+		<script	src="/jquery/dist/jquery.min.js"></script>
+		<script	src="/lodash/lodash.min.js"></script>
+		<script src="/bootstrap/dist/js/bootstrap.min.js"></script>
+		<script src="/socket.io/socket.io.js"></script>
+		<link rel="stylesheet" href="/css/IOT.css">
+		<link rel="stylesheet" href="/css/navBar.css">
+		<script src="/js/CUI.js"></script>
+		<script src="/js/app.js"></script>
+		<script src="/js/common.js"></script>
+		<link rel="shortcut icon" type="image/x-icon" href="/images/logomark.ico">
+	</head>
+	<body ng-app="appModule" ng-controller="appController">
+			<!-- navigation bar begins -->
+		<div id="main">
+			<nav class="navbar navbar-inverse">
+				<div class="container-fluid">
+					<div class="navbar-header">
+					  <a class="navbar-brand" href="index.html" target="_blank">
+						<img alt="Brand" id="logo" src="/images/logo.png">
+					  </a>
+					</div>
+				</div>
+			</nav>
+			<nav id="lowerNav">
+				<div id="hamburger">
+					<span></span>
+					<span></span>
+					<span></span>
+				</div>
+				<div id="lowerNavHeader">Dashboard</div>
+			</nav>
+			
+			<div id="configModal" class="modal fade">
+				<div class="modal-dialog">
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+							</button>
+							<label>Configuration</label>
+						</div>
+						
+						<form role="form" class="form-horizontal" name="configForm" id="configForm">
+							<div class="modal-body">
+								<div class="form-group">
+									<label class="formConfigHeader">IOT Workbench Host details</label>
+									<br />
+									<label class="control-label col-sm-3" for="pwd">Host</label>
+									<div class="col-sm-4"> 
+										<input type="text" name="hostName" placeholder="Name" id="hostName" class="form-control" ng-model="hostName" required/>
+										<span class="error" ng-show="configForm.hostName.$error.required &&  !configForm.hostName.$untouched">
+											Required!
+										</span>
+									</div>
+									<div class="col-sm-4"> 
+										<input type="text" name="hostPort" placeholder="Port" id="hostPort" class="form-control" ng-model="hostPort" required/>
+										<span class="error" ng-show="configForm.hostPort.$error.required &&  !configForm.hostPort.$untouched">
+											Required!
+										</span>
+									</div>
+								</div>
+								<hr />
+								<div class="form-group">
+									<label class="formConfigHeader">Covisint API Credentials</label>
+									<br />
+									<label class="control-label col-sm-3" for="pwd">Client ID:</label>
+									<div class="col-sm-9"> 
+										<input type="text" name="tokenClientID" id="tokenClientID" class="form-control" ng-model="tokenClientId" required>
+										<span class="error" ng-show="configForm.tokenClientID.$error.required &&  !configForm.tokenClientID.$untouched">
+											Required!
+										</span>
+									</div>
+								</div>
+								<div class="form-group">
+									<label class="control-label col-sm-3" for="pwd">Client Secret:</label>
+									<div class="col-sm-9"> 
+										<input type="password" name="tokenClientSecret" id="tokenClientSecret" class="form-control" ng-model="tokenClientSecret" required/>
+										<span class="error" ng-show="configForm.tokenClientSecret.$error.required &&  !configForm.tokenClientSecret.$untouched">
+											Required!
+										</span>
+									</div>
+								</div>
+							</div>
+							<div class="modal-footer">							
+								<div class="form-group"> 
+									<div class="col-sm-offset-2 col-sm-10">
+									  <button type="submit" id="restore" class="btn btn-primary" ng-click="restoreConfig()" data-dismiss="modal">Restore Defaults</button>
+									  <button type="submit" id="saveConfig" class="btn btn-danger" ng-click="saveConfig()" data-dismiss="modal" ng-disabled="configForm.$invalid">Save Config</button>
+									</div>
+								</div>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+
+			<!-- navigation bar ends-->	
+			
+			<!-- stream information bar begins -->
+			<br/><br/>
+			<div ng-show="selectedDevice">
+				<button type="button" class="btn btn-danger" id="streamButton" data-toggle="modal" data-target="#myModal"><h4>Stream information</h4><span class="glyphicon  glyphicon-menu-right"></span></button>
+				<div id="slideStreamInfo">
+					<h3> Stream Information </h3><br />
+					<form role="form">
+						<div class="form-group">
+							<textarea ng-model="streamUserInput" class="form-control" id="streamInfoData" rows="10" name="streamUserInput" ng-change="validateStreamInfo()" required></textarea>
+						</div>
+						<button type="submit" id="submitStreamInfo" ng-click="streamSubmit()" class="btn btn-primary">Connect</button>
+					</form>
+				</div>
+			</div>
+			<!-- stream information bar begins -->
+			
+			<div class="container">
+			<h3 id="configLine" ng-hide="configEntered" data-toggle="modal" data-target="#configModal">Please enter configuration details here</h3>
+				<!-- drop down div begins -->
+				<div class="dropdown">
+					<div style="float:left; width:60%;" ng-show="configEntered">
+						<span class="header">Application</span>
+						<select class="devicesDropdown" ng-model="selectedApp" ng-change="appSelected(selected.id)" ng-options="x.name[0].text for x in appList" value="x.AppName">
+							<option value="">Select Applications</option>
+						</select>
+					</div>
+					<div ng-show="selectedApp" >
+						<span class="header">Devices</span>
+						<select class="devicesDropdown" ng-model="selectedDevice" ng-change="deviceSelected(selected.id)" ng-options="x.name[0].text for x in deviceList" value="{{x.name[0].text}}">
+							<option value="">Select Devices</option>
+						</select>
+					</div>
+				</div>
+				<!-- drop down div ends -->
+				<!-- info table begins-->
+				<br /><br />
+				<div ng-show="selectedDevice">
+					<table class = "table-responsive">
+						<table class="table" id="appTable">
+							<tr>
+								<th>Events</th>
+								<th>Commands</th>
+							</tr>
+							<tr>
+								<td>
+									<!-- column for events begins-->
+									<table class="mainTable">
+										<tbody ng-repeat="item in eventsLocal" ng-model="eventsLocal">
+											<tr>
+												<td >{{item.name}}</td>
+												<td><span class="badge">{{item.count}}</span></td>
+											</tr>
+										</tbody>
+									</table>
+									<!-- column for events ends-->
+								</td>
+								<td>
+									<!-- column for commands begins-->
+									<table class="mainTable">
+										<tbody >
+											<tr ng-repeat="item in commandListLocal">
+												<td>{{item.name}}</td>
+												<td><span class="glyphicon glyphicon-link" title="commands" data-toggle="modal" id="commandSpan" data-target="#commandModal{{$index}}" ></span>
+												<!-- modal begins -->
+													<div id="commandModal{{$index}}" class="modal fade" role="dialog">
+														<div class="modal-dialog">{{item.id}}
+														<!-- Modal for command fields-->
+															<div class="modal-content">
+																<div class="modal-header">
+																	<button type="button" class="close" data-dismiss="modal">&times;</button>
+																	<h3 class="modal-title">Command Payload - {{item.name}}</h3><h6>id:{{item.id}}</h6>
+																</div>
+																<form name="commandForm" role="form" id="myForm" method="post">
+																	<div class="modal-body" ng-show="item.args">
+																		<div class="form-group" ng-repeat="commandField in item.args">
+																			<label id="commandLabel" class="control-label col-sm-4">{{commandField.name}}</label>
+																			<div class="col-sm-8" id="commandDetails">
+																				<input id="commandTextbox{{$index}}" name="commandForm{{$index}}" type="{{commandField.type}}" placeholder="{{commandField.type}}" class="form-control" ng-model="commandField.value" required/>
+																			<span class="error" ng-show="commandForm.commandForm{{$index}}.$error.required &&  !commandForm.commandForm{{$index}}.$untouched">
+																		Required!</span>
+																			</div><br /><br /><br />
+																		</div>
+																	</div>
+																	<div class="modal-body" ng-show="item.message">
+																		<div class="modal-body" style="margin-bottom:60%;">
+																			<div class="form-group">
+																				<div class="col-sm-8" id="eventDetails">
+																					<textarea rows="8" class="form-control" ng-model="item.message"></textarea>
+																				</div>
+																			</div>
+																		</div>
+																	</div>
+																	<div class="modal-footer">
+																		<div class="form-group"> 
+																			<div class="col-sm-offset-2 col-sm-10">
+																			  <button type="submit" id="publish" class="btn btn-primary" ng-click="getFormData(item.name)" ng-disabled="commandForm.$invalid" data-dismiss="modal">Publish</button><button class="btn btn-danger" data-dismiss="modal" aria-hidden="true">Close</button>
+																			</div>
+																		</div>
+																	</div>
+																</form>
+															</div>
+														</div>
+													</div>
+												</td>
+											</tr>
+										</tbody>
+									</table>
+									<!-- column for attributes ends-->
+								</td>
+							</tr>
+						</table>
+					</table>
+					<!-- info table ends-->
+					<!-- Accordian for logs begins -->
+					<div class="logs" ng-show="result.attributes.standard && selectedDevice">
+						<div class="btn" id="logButton" style="width:100%">Logs &nbsp;&nbsp;
+							<span id="downGlyphicon" class="glyphicon glyphicon-chevron-down" data-toggle="collapse" data-target="#demo"></span>
+							<span id="pauseGlyphicon" title="Pause/Play logs"  ng-click="pauseLogging()" class="glyphicon glyphicon-pause"></span>
+							<span id="stopGlyphicon" title="Clear logs" ng-click="clearLogs()" class="glyphicon glyphicon-remove"></span>
+						</div>
+						<div id="demo" class="collapse">
+							<div class="jumbotron">
+								<table id="table1">
+									<tr>
+										<th>Incoming </th>
+										<th> Outgoing </th>
+									</tr>
+									<tr>
+										<td id="incomingTable"><div id="incomingData"></div></td>
+										<td id="outgoingTable"><div id="outgoingData"></div></td>
+									</tr>
+								</table>
+							</div>
+						</div>
+					</div>
+					<!-- Accordian for logs ends -->
+				</div>
+			</div>
+		</div>
+		<div id="sidenav" class="sidenav">
+			<a href="device.html" target="_blank"><img id="deviceLogo" src="/images/devices.png">Devices</a>
+			<a href="deviceGroup.html" target="_blank"><img id="deviceLogo" src="/images/deviceGroup.png">Device Group</a>
+			<a class="active" href="app.html" ><img id="appLogo" src="/images/app.png">Applications</a>
+			<a href="/red" target="_blank"><img id="nodeLink" src="/images/nodeLink.png">COVS-RED</a>
+			<a id="config" data-toggle="modal" data-target="#configModal"><img id="configLogo" src="/images/config.png">Configuration</a>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,125 @@
+.loading-panel {
+	width: 20%;
+	height: 30%;
+	margin-top:2%;
+	margin-left:40%;
+	overflow: hidden;
+	/* border:1px solid black; */
+}
+#animationLogo{
+	width:25%;
+	margin-left:35%;
+	margin-top:19%;
+}
+
+
+#animationLogo, :before {
+	 animation-name: fade,slide-in-top;
+  animation-duration:10s;
+  animation-fill-mode: forwards;
+  -webkit-animation-name: fade,slide-in-top;
+  -webkit-animation-duration:10s;
+  -webkit-animation-fill-mode: forwards;
+}
+
+.icon {
+	overflow: hidden;
+	animation-name: blind-right ;
+	animation-duration:1.42857s;
+	animation-fill-mode: forwards;
+	-webkit-animation-name: blind-right ;
+	-webkit-animation-duration:1.42857s;
+	-webkit-animation-fill-mode: forwards;
+	margin-left: 42.6%;
+	margin-top:-18%;
+}
+
+
+/* Animations */
+@keyframes slide-in-top {
+  0% {
+    top: -20%;
+  }
+  10% {
+    top: -20%;
+  }
+  15% {
+    top: 50%;
+  }
+  75% {
+    top: 50%;
+  }
+  80% {
+   top: 50%;
+  }
+  100% {
+    top: 50%;
+  }
+}
+@keyframes fade {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 0;
+  }
+  15% {
+    opacity: .3;
+  }
+  75% {
+    opacity: .3;
+  }
+  80% {
+    opacity: .3;
+  }
+  100% {
+    opacity: .3;
+  }
+}
+@keyframes late-fade {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 0;
+  }
+  20% {
+    opacity: .6;
+  }
+  70% {
+    opacity: .6;
+  }
+  75% {
+    opacity: .6;
+  }
+  100% {
+    opacity: .6;
+  }
+}
+
+@keyframes blind-right {
+  0% {
+    width: 0;
+    opacity: 0;
+  }
+  1% {
+    width: 0;
+    opacity: 1;
+  }
+  50% {
+    width: 35px;
+    opacity: 1;
+  }
+  99% {
+    width: 35px;
+    opacity: 1;
+  }
+  100% {
+    width: 35px;
+    opacity: 1;
+  }
+}
+@keyframes sprite {
+  from { background-position: 0 0%; }
+  to { background-position: 0 100%; }
+}	

@@ -1,0 +1,47 @@
+
+ <script type="text/javascript">
+    
+	
+	RED.nodes.registerType('covs-oauth',{
+        category: 'covisint',
+        color: '#a6bbcf',
+        defaults: {
+            clientID: {value:"SJ4qGQuU88b1qwHfOeNbqWnG73MRfMTb"},
+			clientSecret: {value:"zZBfYRA5Ax9w0aA8"},
+        },
+        inputs:1,
+        outputs:1,
+        icon: "logos.png",
+		align: 'left',
+        label: function() {
+            return this.name||"covs-oauth";
+        }
+    });
+</script>
+<script type="text/x-red" data-template-name="covs-oauth">
+  
+	<div class="form-row">
+        <label for="node-input-clientID"><i class="icon-tag"></i> Client ID </label>
+        <input type="text" id="node-input-clientID" placeholder="SJ4qGQuU88b1qwHfOeNbqWnG73MRfMTb" value="SJ4qGQuU88b1qwHfOeNbqWnG73MRfMTb">
+    </div>
+	<div class="form-row">
+        <label for="node-input-clientSecret"><i class="icon-tag"></i> Client Secret </label>
+        <input type="text" id="node-input-clientSecret" placeholder="zZBfYRA5Ax9w0aA8" value="zZBfYRA5Ax9w0aA8">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="covs-oauth">
+    <p>Create or refresh access token. The generated token can be used for bearer-type authentication in other API calls. The  <code>Client ID </code>and <code>Client Secret </code>are passed in for authentication either from UI or from any file and return access token with time-to-live in response.
+	</p>
+	<pre>
+		{ 
+			access_token: '2|3HqvaQrTgglSGnRqq5VSXNYGEFsg',
+			expires_in: 899,
+			scope: 'all',
+			token_type: 'Bearer' 
+		}
+	</pre>
+	<p>The response will be available in msg.oauth not in msg.payload.
+	   Please use msg.oauth to extract access_token.
+	</p>
+	</script>

@@ -1,0 +1,245 @@
+<script src="//localhost:1880/lodash/lodash.min.js"></script>
+<script src="//localhost:1880/@covisint/cui.js/dist/cui.min.js"></script>
+<style>
+.labels{
+	width:350px !important;
+	text-decoration:bold !important;
+}
+</style>
+<script type="text/javascript">	
+	var myClId = '';
+	var mySecId = '';
+	var subsAppListArray = [];
+	var subsAppStream;
+	var subsAppList;
+	var selectedSubsDeviceId;
+	var selectedSubscriberName='';
+	var subsNameFlag;
+	var subsAppStreamList;
+	var subsAppProtocolType;
+	var subsAppConsumerTopic;
+	var producerTopic;
+	var selectedSubsName;
+	var selectedStream;
+	var subsAppClientId;
+	var subsAppUname;
+	var subsAppPwd;
+	RED.nodes.registerType('covs-appSubscriber',{
+        category: 'covisint',
+        color: '#a6bbcf',
+        defaults: {
+			clis: {type:"covs-clientsecret",required: true},
+			width: {value: 0, validate: function(v) {
+				var width = v||0;
+                var currentclis = $('#node-input-clis').val()||this.clis;
+				var clisNode = RED.nodes.node(currentclis);
+				$('#node-input-subsAppListTemp :selected').text(this.subsAppList)
+				$('#node-input-subsAppStreamTemp :selected').text(this.subsAppStream)
+				if (clisNode!=null && clisNode!=undefined){
+					myClId = clisNode.clientid;
+					mySecId = clisNode.secret;
+					cuiCallSubApp(myClId, mySecId);
+				}
+				else{
+					$('#node-input-subsAppListTemp')
+					.find('option')
+					.remove()
+					.end()
+					.append('<option>Select a device</option>')
+					.val('Select a device');
+				}
+				var valid = !clisNode;// || +width <=  +clisNode.width;
+                $("#node-input-clis").toggleClass("input-error",!valid);
+                return true;//valid;
+			  }},
+			subsAppList:{value:subsAppList},
+			subsAppStream:{value:subsAppStream},
+			subsAppProtocolType:{value:subsAppProtocolType},
+			subsAppClientId:{value:subsAppClientId},
+			subsAppConsumerTopic:{value:subsAppConsumerTopic},
+			subsAppUname:{value:subsAppUname},
+			subsAppPwd:{value:subsAppPwd}
+        },
+        inputs:1,
+        outputs:1,
+        icon: "logos.png",
+		align: 'right',
+        label: function() {
+            return this.name||"covs-appSubscriber";
+        },
+        oneditprepare: function() {
+			$("#node-input-subsAppListTemp :selected").text(subsAppList);
+			$("#node-input-subsAppStreamTemp :selected").text(subsAppStream);
+		},
+    });
+	
+function cuiCallSubApp(myClId, mySecId){
+	cui.api({
+		defs: ['https://cuijs.run.covisintrnd.com/defs/idm.json','https://cuijs.run.covisintrnd.com/defs/iot.json'],
+		serviceUrl: 'PRD'
+	 }).then(function (returnedObj) {
+		myCuiJs = returnedObj;
+		fetchAuthToken(myClId, mySecId);
+		fetchsubsAppList();
+	 });
+}
+
+function fetchsubsAppList() {
+subsAppListArray = [];
+	myCuiJs.getApplications()
+	.then(function(response) {
+		response.forEach(function(fetchedAppFromList) {
+			subsAppListArray.push(fetchedAppFromList);
+			$('#node-input-subsAppListTemp').append($('<option>', { 
+				value: fetchedAppFromList.name[0].text,
+				text : fetchedAppFromList.name[0].text
+			}));
+		});
+	});
+}
+
+function selectedSubsAppfn(select){
+clearSubsAppFields();
+selectedSubsDeviceId = "";
+subsAppList = $('#node-input-subsAppListTemp :selected').text();
+$('#node-input-subsAppList').val($('#node-input-subsAppListTemp :selected').text());
+	$.each(subsAppListArray, function (i, subsAppListArray){
+		if(subsAppListArray.name[0].text == subsAppList){
+			selectedSubsDeviceId = subsAppListArray.id;
+		}
+	})
+	if(selectedSubsDeviceId!=""){
+		getsubsAppStreams();
+	}
+}
+
+function clearSubsAppFields(){
+	$('#node-input-subsAppStreamTemp :selected').text("");
+	$('#node-input-subsAppStreamTemp')
+    .find('option')
+    .remove()
+    .end()
+    .append('<option>-- Select a stream --</option>')
+    .val('-- Select a stream --');
+	$('#node-input-subsAppUname').val("");
+	$('#node-input-subsAppPwd').val("");
+	$('#node-input-subsAppId').val("");
+	$('#node-input-subsAppProtocolType').val("");
+	$('#node-input-subsAppClientId').val("");
+	$('#node-input-subsAppConsumerTopic').val("");
+}
+
+function getsubsAppStreams(){
+subsAppStreamList= [];
+	myCuiJs.getStreams()
+	.then(function(response) {
+		response.forEach(function(fetchedStreamFromList) {
+			if(fetchedStreamFromList.ownerId == selectedSubsDeviceId){
+				subsAppStreamList.push(fetchedStreamFromList)
+				$('#node-input-subsAppStreamTemp').append($('<option>', { 
+					value: fetchedStreamFromList.name[0].text,
+					text : fetchedStreamFromList.name[0].text
+				}));
+			} 
+		});
+	});
+}
+
+function populateSubFields(){
+	subsAppStream = $('#node-input-subsAppStreamTemp :selected').text();
+	$('#node-input-subsAppStream').val($('#node-input-subsAppStreamTemp :selected').text());
+	$.each(subsAppStreamList, function (i, subsAppStreamList){
+		subsAppId = subsAppStreamList.ownerId;
+		subsAppProtocolType = subsAppStreamList.protocolType;
+		subsAppClientId = subsAppStreamList.protocolSecurityAttributes[0].value;
+		subsAppConsumerTopic = subsAppStreamList.consumerTopic;
+		//populates below fields	
+		$('#node-input-subsAppProtocolType').val(subsAppProtocolType);
+		$('#node-input-subsAppClientId').val(subsAppClientId);
+		$('#node-input-subsAppConsumerTopic').val(subsAppConsumerTopic);
+		$('#node-input-subsAppId').val(subsAppId);
+	})
+}
+
+function getSubsAppUname(){
+	subsAppUname = $('#node-input-subsAppUname').val();
+}
+function getSubsAppPwd(){
+	subsAppPwd = $('#node-input-subsAppPwd').val();
+}
+</script>
+<script type="text/x-red" data-template-name="covs-appSubscriber">
+
+	<div class="form-row">
+        <label for="node-input-clis"><i class="fa fa-table"></i>Credentials</label>
+		<input type="hidden" id="node-input-width">
+        <input type="text" id="node-input-clis">
+    </div>
+
+	<div class="form-row">
+        <label for="node-input-subsAppList"><i class="icon-tag"></i> Applications </label>
+		<input type="hidden" id="node-input-subsAppList">
+		<select id="node-input-subsAppListTemp" onChange="selectedSubsAppfn(this)">
+			<option>-- Select an Application --</option>
+		</select>
+    </div>
+	<div class="form-row">
+        <label for="node-input-subsAppStream"><i class="icon-tag"></i> Streams </label>
+		<input type="hidden" id="node-input-subsAppStream">
+        <select id="node-input-subsAppStreamTemp" onChange="populateSubFields(this)">
+			<option>-- Select Stream --</option>
+		</select>
+    </div>
+	<div class="form-row">
+        <label for="node-input-subsAppProtocolType"><i class="icon-tag"></i> Protocol Type </label>
+       <input type="text" id="node-input-subsAppProtocolType" class="labels" value=""/>
+    </div>
+	<div class="form-row">
+        <label for="node-input-subsAppClientId"><i class="icon-tag"></i> Client ID </label>
+       <input type="text" id="node-input-subsAppClientId" class="labels" value=""/>
+    </div>
+	<div class="form-row">
+        <label for="node-input-subsAppConsumerTopic"><i class="icon-tag"></i> Producer Topic </label>
+        <input type="text" id="node-input-subsAppConsumerTopic" class="labels" value="" />
+    </div>
+	<hr>
+	<div class="form-row">
+        <label for="node-input-subsAppUname"><i class="icon-tag"></i> User Name </label>
+        <input type="text" id="node-input-subsAppUname" oninput="getSubsAppUname(this)" value="" />
+    </div>
+	<div class="form-row">
+        <label for="node-input-subsAppPwd"><i class="icon-tag"></i> Password </label>
+        <input type="text" id="node-input-subsAppPwd" oninput="getSubsAppPwd(this)" value="" />
+    </div>
+
+	</div>
+</script>
+
+<script type="text/x-red" data-help-name="covs-appSubscriber">
+    <p>Create subcriber node to subscribe and consume messages published by the publisher in the COVISINT realm.
+	The received message is added to <code>msg.payload</code></p>
+	<p>
+		<table>
+			<tr>
+				<code>Applications</code>: List of applications for which the node will be subscribed.<br>
+			</tr>
+			<tr>
+				<code>Stream</code>: Stream List of the selected device<br>
+			</tr>
+			<tr>
+				<code>Protocol Type</code>: Protocol Type (Eg. MQTT, AMQP, WebSocket, etc).<br>
+			</tr>
+			<tr>
+				<code>Client ID</code>: Client ID for selected stream.<br>
+			</tr>
+			<tr>
+				<code>Producer Topic</code>: ID of producer topic for selected stream.<br>
+			</tr>
+			<tr>
+				<code>User Name </code>: User name for the selected type in the realm.<br></tr>
+			<tr>
+				<code>Password</code>: Password for the selected type.<br>
+			</tr>
+		</table>
+	</p>
+</script>

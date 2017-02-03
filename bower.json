@@ -1,0 +1,23 @@
+{
+  "name": "views",
+  "authors": [
+    "vineetsinha2016 <vineet.sinha07@gmail.com>"
+  ],
+  "description": "",
+  "main": "",
+  "license": "MIT",
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "bootstrap": "3.3.6",
+    "angular": "1.4.8",
+    "lodash": "3.10.1",
+    "jquery": "1.11.3"
+  }
+}

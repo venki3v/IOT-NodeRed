@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<script src="//localhost:1880/lodash/lodash.min.js"></script>
+<script src="//localhost:1880/@covisint/cui.js/dist/cui.min.js"></script>
+<style>
+.labels{
+	width:350px !important;
+	text-decoration:bold !important;
+}
+</style>
+<script type="text/javascript">
+
+	var myClId = '';
+	var mySecId = '';
+	var deviceListArray=[];
+	var deviceList;
+	var selectedDeviceId;
+	var deviceProtocolValue;
+	var deviceStream;
+	var deviceId;
+	var streamList;
+	var events = [];
+	var deviceUname;
+	var devicePwd;
+	var deviceClientId;
+	var deviceProducerTopic
+	var msgToPublish;
+	var msgTypeId;
+	var eventName;
+	var hiddenDeviceT;
+	RED.nodes.registerType('covs-devicePublisher',{
+        category: 'covisint',
+        color: '#a6bbcf',
+        defaults: {
+			clis: {type:"covs-clientsecret",required: true},
+			width: {value: 0, validate: function(v) {
+				var width = v||0;
+                var currentclis = $('#node-input-clis').val()||this.clis;
+                var currentdevice = $('#node-input-deviceListTemp').val()||this.clis;
+				var clisNode = RED.nodes.node(currentclis);
+				$('#node-input-deviceListTemp :selected').text(this.deviceList)
+				$('#node-input-deviceStreamTemp :selected').text(this.deviceStream)
+				if (clisNode!=null && clisNode!=undefined){
+					myClId = clisNode.clientid;
+					mySecId = clisNode.secret;
+					cuiCall(myClId, mySecId);
+				}
+				else{
+					$('#node-input-deviceListTemp')
+					.find('option')
+					.remove()
+					.end()
+					.append('<option>Select a device</option>')
+					.val('Select a device');
+				}
+				var valid = !clisNode;// || +width <=  +clisNode.width;
+                $("#node-input-clis").toggleClass("input-error",!valid);
+                return true;//valid;
+			  }},
+			deviceList:{value:deviceList},
+			deviceStream:{value:deviceStream},
+			deviceId:{value:deviceId},
+			deviceProtocolValue:{value:deviceProtocolValue},
+			deviceClientId:{value:deviceClientId},
+			deviceProducerTopic:{value:deviceProducerTopic},
+			eventName:{value:eventName},
+			msgTypeId:{value:msgTypeId},
+			msgToPublish:{value:msgToPublish},
+			deviceUname:{value:deviceUname},
+			devicePwd:{value:devicePwd},
+		},
+        inputs:1,
+        outputs:1,
+        icon: "logos.png",
+		align: 'right',
+        label: function() {
+            return this.name||"covs-devicePublisher";
+        },
+        oneditprepare: function() {
+			$("#node-input-deviceListTemp :selected").text(deviceList);
+			$("#node-input-deviceStreamTemp :selected").text(deviceStream);
+			
+		},
+});
+
+function cuiCall(myClId, mySecId){
+	cui.api({
+		// ... setting the following properties.
+		defs: ['https://cuijs.run.covisintrnd.com/defs/idm.json','https://cuijs.run.covisintrnd.com/defs/iot.json'],
+		serviceUrl: 'PRD'
+	 }).then(function (returnedObj) {
+		// ... copy the returned obj to your globally-scoped object.
+		<!-- console.log(returnedObj); -->
+		myCuiJs = returnedObj;
+		fetchAuthToken(myClId, mySecId);
+		fetchDeviceList();
+	 });
+}
+
+
+function fetchDeviceList() {
+deviceListArray = [];
+	myCuiJs.getDevices()
+	.then(function(response) {
+		response.forEach(function(fetchedDeviceFromList) {
+			if(fetchedDeviceFromList.state.lifecycleState == "active"){ //checks if state of each device is active
+				deviceListArray.push(fetchedDeviceFromList);
+				$('#node-input-deviceListTemp').append($('<option>', { 
+					value: fetchedDeviceFromList.name[0].text,
+					text : fetchedDeviceFromList.name[0].text
+				}));
+			}
+		});
+	});
+}
+
+function populateMessageTypeId(selectedDeviceId){
+events=[];
+	myCuiJs.getDevice({deviceId: selectedDeviceId})
+	.then(function(response) {
+		response.observableEvents.forEach(function(fetchedEvents) {
+			events.push(fetchedEvents);
+			$('#node-input-msgTypeId').val(fetchedEvents.id);
+			$('#node-input-eventName').val(fetchedEvents.name);
+		})
+			msgTypeId = $('#node-input-msgTypeId').val();
+			populateMsgToPublish();
+	})
+}
+	
+function fetchAuthToken(myClId, mySecId) {
+	myCuiJs.doSysAuth({
+			clientId : myClId,
+			clientSecret : mySecId
+	}).then(function(token) {
+	}).fail(function(err) {
+			console.log("Error in getAuthToken(): " + JSON.stringify(err));
+	});
+}
+
+function clearFields(){
+	
+	$('#node-input-deviceStreamTemp :selected').text("");
+	$('#node-input-deviceStreamTemp')
+    .find('option')
+    .remove()
+    .end()
+    .append('<option>-- Select a stream --</option>')
+    .val('-- Select a stream --');
+	$('#node-input-deviceUname').val("");
+	$('#node-input-devicePwd').val("");
+	$('#node-input-deviceId').val("");
+	$('#node-input-msgToPublish').val("");
+	$('#node-input-msgTypeId').val("");
+	$('#node-input-eventName').val("");
+	$('#node-input-deviceProtocolValue').val("");
+	$('#node-input-deviceClientId').val("");
+	$('#node-input-deviceProducerTopic').val("");
+}
+
+function selectedDevicefn(select){
+clearFields();
+selectedDeviceId = "";
+deviceList = $('#node-input-deviceListTemp :selected').text();
+$('#node-input-deviceList').val($('#node-input-deviceListTemp :selected').text());
+	$.each(deviceListArray, function (i, deviceListArray){
+		if(deviceListArray.name[0].text == deviceList){
+			selectedDeviceId = deviceListArray.id;
+		}
+	})
+	if(selectedDeviceId!=""){
+		getDeviceStreams();
+	}
+}
+
+function getDeviceStreams(){
+streamList= [];
+	myCuiJs.getStreams()
+	.then(function(response) {
+		response.forEach(function(fetchedStreamFromList) {
+			if(fetchedStreamFromList.ownerId == selectedDeviceId){
+				streamList.push(fetchedStreamFromList)
+				$('#node-input-deviceStreamTemp').append($('<option>', { 
+					value: fetchedStreamFromList.name[0].text,
+					text : fetchedStreamFromList.name[0].text
+				}));
+			} 
+		});
+	});
+}
+
+function populateFields(){
+	deviceStream = $('#node-input-deviceStreamTemp :selected').text();
+	$('#node-input-deviceStream').val($('#node-input-deviceStreamTemp :selected').text());
+	populateMessageTypeId(selectedDeviceId);
+	$.each(streamList, function (i, streamList){
+		deviceId = streamList.ownerId;
+		deviceProtocolValue = streamList.protocolType;
+		deviceClientId = streamList.protocolSecurityAttributes[0].value;
+		deviceProducerTopic = streamList.producerTopic;
+		//populates below fields	
+		$('#node-input-deviceProtocolValue').val(deviceProtocolValue);
+		$('#node-input-deviceClientId').val(deviceClientId);
+		$('#node-input-deviceProducerTopic').val(deviceProducerTopic);
+		$('#node-input-deviceId').val(deviceId);
+	})
+}
+
+function populateMsgToPublish(){
+var msgToPublishTag = $('#node-input-msgToPublish')
+	$.each(events, function(i,events){
+		msgToPublishTag.val("{ ");
+		events.eventFields.forEach(function(fetchEventFields) {
+			msgToPublishTag.val(msgToPublishTag.val()+"\""+fetchEventFields.name+"\":\""+fetchEventFields.type+"\" ,")
+		});
+		var msgToPublishValue = msgToPublishTag.val();
+		msgToPublishValue = msgToPublishValue.substr(0,msgToPublishValue.length-1);
+		msgToPublishTag.val(msgToPublishValue+" }");
+	})
+	msgToPublish = $('#node-input-msgToPublish').val();
+}
+
+function getDeviceUname(){
+	deviceUname = $('#node-input-deviceUname').val();
+}
+function getDevicePwd(){
+	devicePwd = $('#node-input-devicePwd').val();
+}
+</script>
+<script type="text/x-red" data-template-name="covs-devicePublisher">
+	<div class="form-row">
+        <label for="node-input-clis"><i class="fa fa-table"></i>Credentials</label>
+		<input type="hidden" id="node-input-width">
+        <input type="text" id="node-input-clis">
+    </div>
+	
+	<div class="form-row">
+        <label for="node-input-deviceList"><i class="icon-tag"></i> Device </label>
+		<input type="hidden" id="node-input-deviceList">
+        <select id="node-input-deviceListTemp" onChange="selectedDevicefn(this)">
+			<option>-- Select a Device --</option>
+		</select>
+    </div>
+	
+	<div class="form-row">
+        <label for="node-input-deviceStream"><i class="icon-tag"></i> Streams </label>
+		<input type="hidden" id="node-input-deviceStream">
+        <select id="node-input-deviceStreamTemp" onChange="populateFields(this)">
+			<option>-- Select Stream --</option>
+		</select>
+    </div>
+	
+	</div>
+		<div class="form-row">
+        <label for="node-input-deviceId"><i class="icon-tag"></i> Device ID </label>
+		<input type="text" id="node-input-deviceId">
+    </div>
+	
+	<div class="form-row">
+        <label for="node-input-deviceProtocolValue"><i class="icon-tag"></i> Protocol Type </label>
+        <input type="text" id="node-input-deviceProtocolValue" class="labels" value="">
+    </div>
+	
+	<div class="form-row">
+        <label for="node-input-deviceClientId"><i class="icon-tag"></i> Client ID </label>
+        <input type="text" id="node-input-deviceClientId" class="labels" value="">
+    </div>
+	
+	<div class="form-row">
+        <label for="node-input-deviceProducerTopic"><i class="icon-tag"></i> Producer Topic </label>
+		<input type="text" id="node-input-deviceProducerTopic" class="labels" value="">
+	</div>
+	
+	
+	<div class="form-row">
+		<label for="node-input-eventName"><i class="icon-tag"></i> Event</label>
+        <input type="text" id="node-input-eventName" class="labels" value="">
+    </div>
+	
+	<div class="form-row">
+        <label for="node-input-msgTypeId"><i class="icon-tag"></i> Message Type ID </label>
+		<input type="text" id="node-input-msgTypeId" class="labels" value="">
+	</div>
+		
+	<div class="form-row">
+        <label for="node-input-msgToPublish"><i class="icon-tag"></i> Message To Publish </label>
+        <input type="text" id="node-input-msgToPublish" oninput="getMsgToPublish()" value="">
+    </div>
+	
+	<hr>
+	<div class="form-row">
+        <label for="node-input-deviceUname"><i class="icon-tag"></i> User Name </label>
+        <input type="text" id="node-input-deviceUname" oninput="getDeviceUname()" value="">
+    </div>
+	<div class="form-row">
+        <label for="node-input-devicePwd"><i class="icon-tag"></i> Password </label>
+        <input type="text" id="node-input-devicePwd" oninput="getDevicePwd()" value="">
+    </div>
+	
+	
+</script>
+
+<script type="text/x-red" data-help-name="covs-devicePublisher">
+    <p>Create publishing node to post commands to subscribed devices in the COVISINT realm.</p>
+	<p>Please note at one time we should have only one client Id and secret in ClIdSecret dropdown.</p>
+	<p> Please make sure to enter appropriate values in MsgToPublish text box. Respective format is populated. </p>
+	<p>
+		<table>
+			<tr>
+				<code>ClIdSecret</code>: Client Id and Secret of realm <br>
+			</tr>
+			<tr>
+				<code>Device</code>: List of Devices for which the node will be published.<br>
+			</tr>
+			<tr>
+				<code>Stream</code>: List of Stream names for selected device<br>
+			</tr>
+			<tr>
+				<code>Device ID</code>: Device ID to which the message will be published.<br>
+			</tr>
+			<tr>
+				<code>Protocol Type</code>: Protocol Type (Eg. MQTT, AMQP, WebSocket, etc).<br>
+			</tr>
+			<tr>
+				<code>Client ID</code>: Client ID for selected stream.<br>
+			</tr>
+			<tr>
+				<code>Producer Topic</code>: ID of producer topic for selected stream.<br>
+			</tr>
+			<tr>
+				<code>Event</code>: Event name for selected device.<br>
+			</tr>
+			<tr>
+				<code>Message Type ID</code>: Message ID for the selected event.<br>
+			</tr>
+			<tr>
+				<code>Message To Publish</code> msg.payload to be used for Message to publish. Expected format is populated<br>
+			</tr>
+			<tr>
+				<pre>Eg. "{\"heartRate\":\"72\" ,\"bodyTemprature\":\"90\" }" </pre>
+			</tr>
+			<tr>
+				<code>User Name </code>: User name for the selected type in the realm.<br>
+			</tr>
+			<tr>
+				<code>Password</code>: Password for the selected type.<br>
+			</tr>
+		</table>
+	</p>
+</script>

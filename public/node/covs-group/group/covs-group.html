@@ -1,0 +1,186 @@
+<script src="//localhost:1880/lodash/lodash.min.js"></script>
+<script src="//localhost:1880/@covisint/cui.js/dist/cui.min.js"></script>
+<script type="text/javascript">
+    var myCuiJs ={};
+	var myClId = '';
+	var mySecId = '';
+	var opType="";
+	var personId;
+	var selectedGroupId;
+	var selectedGroupName;
+	var groupListArray=[];
+	RED.nodes.registerType('covs-group',{
+        category: 'covisint',
+        color: '#a6bbcf',
+        defaults: {
+            clis: {type:"covs-clientsecret",required: true },
+			width: {value: 0, validate: function(v) {
+                var width = v||0;
+                var currentclis = $('#node-input-clis').val()||this.clis;
+				var clisNode = RED.nodes.node(currentclis);
+				$('#node-input-groupIdTemp :selected').text(this.groupId)
+				if (clisNode!=null && clisNode!=undefined){
+					myClId = clisNode.clientid;
+					mySecId = clisNode.secret;
+					cuiMethod(myClId, mySecId);
+				}
+				else {
+					$('#node-input-groupIdTemp')
+					.find('option')
+					.remove()
+					.end()
+					.append('<option>Select a group</option>')
+					.val('Select a group');
+				}
+				var valid = !clisNode;// || +width <=  +clisNode.width;
+                $("#node-input-clis").toggleClass("input-error",!valid);
+                return true;//valid;
+            }},
+			personId : {value : personId},
+			opType : {value : opType},
+			groupId : {value : selectedGroupId}
+        },
+		
+        inputs:1,
+        outputs:1,
+        icon: "logos.png",
+		align: 'right',
+        label: function() {
+		    return "covs-group";
+        },
+        oneditprepare: function() {
+			$('node-input-opType :selected').text(opType);						
+			$('node-input-groupIdTemp :selected').text(selectedGroupName);	
+			
+        },
+    });
+	function cuiMethod(myClId, mySecId){
+		cui.api({
+			// ... setting the following properties.
+			defs: ['https://cuijs.run.covisintrnd.com/defs/idm.json','https://cuijs.run.covisintrnd.com/defs/iot.json'],
+			serviceUrl: 'PRD'
+		 }).then(function (returnedObj) {
+			// ... copy the returned obj to your globally-scoped object.
+			myCuiJs = returnedObj;
+			getAuthToken(myClId, mySecId);
+			getGroup();	
+		 });
+	}
+	function getAuthToken(myClId, mySecId) {
+		myCuiJs.doSysAuth({
+				clientId : myClId,
+				clientSecret : mySecId
+		}).then(function(token) {
+						//getGroup();
+		}).fail(function(err) {
+						console.log("Error in getAuthToken(): " + JSON.stringify(err));
+		});
+	}
+
+
+function getGroup(){
+groupList = [];
+groupIdList = [];
+groupListArray=[];
+myCuiJs.getGroups()
+	.then(function(response) {
+		response.forEach(function(fetchedGroups) {
+		if (fetchedGroups!=undefined && fetchedGroups.name!=undefined){
+			if (fetchedGroups.name[1]!=undefined) {
+			groupListArray.push(fetchedGroups);
+			groupList.push(fetchedGroups.name[1].value);
+			}
+		}
+		});
+		groupList.sort();
+		getGroupList();
+	});
+		return "something";
+	}
+	function getGroupList(){
+		$.each(groupList, function (i, groupList) {
+			$('#node-input-groupIdTemp').append($('<option>', { 
+				value: groupList,//groupList,
+				text : groupList
+			}));
+		});
+		
+}
+function getOperationType(){
+	opType = $('node-input-opType :selected').text();
+}
+ 
+function getPersonId(){
+	personId = $('node-input-personId').val();
+}
+function getGroupId(){
+	clearAll();
+	selectedGroupName = $('#node-input-groupIdTemp :selected').text();
+	$.each(groupListArray, function (i, groupListArray){
+		if(groupListArray.name[1].value == selectedGroupName){
+			selectedGroupId = groupListArray.id;
+			$('#node-input-groupId').val(selectedGroupName);
+			console.log(selectedGroupId); 
+		}
+	})
+}
+
+function clearAll(){
+	$('#node-input-personId').val("");
+}
+</script>
+<script type="text/x-red" data-template-name="covs-group">
+<div class="form-row">
+        <label for="node-input-clis"><i class="fa fa-table"></i>Credentials</label>
+		<input type="hidden" id="node-input-width">
+        <input type="text" id="node-input-clis">
+    </div>
+	
+  <div class="form-row">
+        <label for="node-input-groupId"><i class="fa fa-table"></i>Group</label>
+		<input type="hidden" id="node-input-groupId">
+		<!-- <input type="hidden" id="node-input-groupName"> -->
+		<select id="node-input-groupIdTemp" onChange="getGroupId()">
+			 <option>Select a group</option>
+		</select>
+    </div>
+	
+	<div class="form-row">
+        <label for="node-input-opType"><i class="icon-tag"></i>Operation Type</label>
+        <select id="node-input-opType" onChange="getOperationType()">
+			<option value="match">Match</option>
+			<option value="add">Add</option>
+			<option value="delete">Delete</option>
+		</select>
+    </div>
+	
+	<div class="form-row">
+        <label for="node-input-personId">Person Id</label>
+        <input type="text" id="node-input-personId" oninput="getPersonId()" value="">
+    </div>
+	
+</script>
+
+<script type="text/x-red" data-help-name="covs-group">
+    <p>Create group node to to do group related activities in the COVISINT realm.</p>
+	<p>Please note at one time we should have only one client Id and secret in ClIdSecret dropdown.</p>
+	<p>Group dropdown will be populated based on client Id and secret.</p>
+	<p>Operation type dropdown contains value add, delete and match.</p>
+	<p>Person Id is CUID.</p>
+	<p>
+	<table>
+	<tr>
+	<code>ClIdSecret</code>: Client Id and Secret of realm <br>
+	</tr>
+	<tr>
+	<code>Group</code>: Group names from the realm <br>
+	</tr>
+	<tr>
+	<code>Operation</code>: Add, Delete or Match member in the selected group. <br>
+	</tr>
+	<tr>
+	<code>Person Id</code>: CUID of member. <br>
+	</tr>
+	</table>
+	</p>
+</script>

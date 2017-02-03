@@ -1,0 +1,247 @@
+<script src="//localhost:1880/lodash/lodash.min.js"></script>
+<script src="//localhost:1880/@covisint/cui.js/dist/cui.min.js"></script>
+<style>
+.labels{
+	width:350px !important;
+	text-decoration:bold !important;
+}
+</style>
+<script type="text/javascript">	
+	var myClId = '';
+	var mySecId = '';
+	var subsDeviceListArray = [];
+	var subsDeviceStream;
+	var subsDeviceList;
+	var selectedSubsDeviceId;
+	var selectedSubscriberName='';
+	var subsNameFlag;
+	var subsDeviceStreamList;
+	var subsDeviceProtocolType;
+	var subsDeviceConsumerTopic;
+	var producerTopic;
+	var selectedSubsName;
+	var selectedStream;
+	var subsDeviceClientId;
+	var subsDeviceUname;
+	var subsDevicePwd;
+	RED.nodes.registerType('covs-deviceSubscriber',{
+        category: 'covisint',
+        color: '#a6bbcf',
+        defaults: {
+			clis: {type:"covs-clientsecret",required: true},
+			width: {value: 0, validate: function(v) {
+				var width = v||0;
+                var currentclis = $('#node-input-clis').val()||this.clis;
+				var clisNode = RED.nodes.node(currentclis);
+				$('#node-input-subsDeviceListTemp :selected').text(this.subsDeviceList)
+				$('#node-input-subsDeviceStreamTemp :selected').text(this.subsDeviceStream)
+				if (clisNode!=null && clisNode!=undefined){
+					myClId = clisNode.clientid;
+					mySecId = clisNode.secret;
+					cuiCallSub(myClId, mySecId);
+				}
+				else{
+					$('#node-input-subsDeviceListTemp')
+					.find('option')
+					.remove()
+					.end()
+					.append('<option>Select a device</option>')
+					.val('Select a device');
+				}
+				var valid = !clisNode;// || +width <=  +clisNode.width;
+                $("#node-input-clis").toggleClass("input-error",!valid);
+                return true;//valid;
+			  }},
+			subsDeviceList:{value:subsDeviceList},
+			subsDeviceStream:{value:subsDeviceStream},
+			subsDeviceProtocolType:{value:subsDeviceProtocolType},
+			subsDeviceClientId:{value:subsDeviceClientId},
+			subsDeviceConsumerTopic:{value:subsDeviceConsumerTopic},
+			subsDeviceUname:{value:subsDeviceUname},
+			subsDevicePwd:{value:subsDevicePwd}
+        },
+        inputs:1,
+        outputs:1,
+        icon: "logos.png",
+		align: 'right',
+        label: function() {
+            return this.name||"covs-deviceSubscriber";
+        },
+        oneditprepare: function() {
+			$("#node-input-subsDeviceListTemp :selected").text(subsDeviceList);
+			$("#node-input-subsDeviceStreamTemp :selected").text(subsDeviceStream);
+		},
+    });
+	
+function cuiCallSub(myClId, mySecId){
+	cui.api({
+		defs: ['https://cuijs.run.covisintrnd.com/defs/idm.json','https://cuijs.run.covisintrnd.com/defs/iot.json'],
+		serviceUrl: 'PRD'
+	 }).then(function (returnedObj) {
+		myCuiJs = returnedObj;
+		fetchAuthToken(myClId, mySecId);
+		fetchSubsDeviceList();
+	 });
+}
+
+function fetchSubsDeviceList() {
+subsDeviceListArray = [];
+	myCuiJs.getDevices()
+	.then(function(response) {
+		response.forEach(function(fetchedDeviceFromList) {
+			if(fetchedDeviceFromList.state.lifecycleState == "active"){ //checks if state of each device is active
+				subsDeviceListArray.push(fetchedDeviceFromList);
+				$('#node-input-subsDeviceListTemp').append($('<option>', { 
+					value: fetchedDeviceFromList.name[0].text,
+					text : fetchedDeviceFromList.name[0].text
+				}));
+			}
+		});
+	});
+}
+
+function selectedSubsDevicefn(select){
+clearSubsDeviceFields();
+selectedSubsDeviceId = "";
+subsDeviceList = $('#node-input-subsDeviceListTemp :selected').text();
+$('#node-input-subsDeviceList').val($('#node-input-subsDeviceListTemp :selected').text());
+	$.each(subsDeviceListArray, function (i, subsDeviceListArray){
+		if(subsDeviceListArray.name[0].text == subsDeviceList){
+			selectedSubsDeviceId = subsDeviceListArray.id;
+		}
+	})
+	if(selectedSubsDeviceId!=""){
+		getSubsDeviceStreams();
+	}
+}
+
+function clearSubsDeviceFields(){
+	$('#node-input-subsDeviceStreamTemp :selected').text("");
+	$('#node-input-subsDeviceStreamTemp')
+    .find('option')
+    .remove()
+    .end()
+    .append('<option>-- Select a stream --</option>')
+    .val('-- Select a stream --');
+	$('#node-input-subsDeviceUname').val("");
+	$('#node-input-subsDevicePwd').val("");
+	$('#node-input-subsDeviceId').val("");
+	$('#node-input-subsDeviceProtocolType').val("");
+	$('#node-input-subsDeviceClientId').val("");
+	$('#node-input-subsDeviceConsumerTopic').val("");
+}
+
+function getSubsDeviceStreams(){
+subsDeviceStreamList= [];
+	myCuiJs.getStreams()
+	.then(function(response) {
+		response.forEach(function(fetchedStreamFromList) {
+			if(fetchedStreamFromList.ownerId == selectedSubsDeviceId){
+				subsDeviceStreamList.push(fetchedStreamFromList)
+				$('#node-input-subsDeviceStreamTemp').append($('<option>', { 
+					value: fetchedStreamFromList.name[0].text,
+					text : fetchedStreamFromList.name[0].text
+				}));
+			} 
+		});
+	});
+}
+
+function populateSubsFields(){
+	subsDeviceStream = $('#node-input-subsDeviceStreamTemp :selected').text();
+	$('#node-input-subsDeviceStream').val($('#node-input-subsDeviceStreamTemp :selected').text());
+	$.each(subsDeviceStreamList, function (i, subsDeviceStreamList){
+		subsDeviceId = subsDeviceStreamList.ownerId;
+		subsDeviceProtocolType = subsDeviceStreamList.protocolType;
+		subsDeviceClientId = subsDeviceStreamList.protocolSecurityAttributes[0].value;
+		subsDeviceConsumerTopic = subsDeviceStreamList.consumerTopic;
+		//populates below fields	
+		$('#node-input-subsDeviceProtocolType').val(subsDeviceProtocolType);
+		$('#node-input-subsDeviceClientId').val(subsDeviceClientId);
+		$('#node-input-subsDeviceConsumerTopic').val(subsDeviceConsumerTopic);
+		$('#node-input-subsDeviceId').val(subsDeviceId);
+	})
+}
+
+function getSubsDeviceUname(){
+	subsDeviceUname = $('#node-input-subsDeviceUname').val();
+}
+function getSubsDevicePwd(){
+	subsDevicePwd = $('#node-input-subsDevicePwd').val();
+}
+</script>
+<script type="text/x-red" data-template-name="covs-deviceSubscriber">
+
+	<div class="form-row">
+        <label for="node-input-clis"><i class="fa fa-table"></i>Credentials</label>
+		<input type="hidden" id="node-input-width">
+        <input type="text" id="node-input-clis">
+    </div>
+
+	<div class="form-row">
+        <label for="node-input-subsDeviceList"><i class="icon-tag"></i> Device </label>
+		<input type="hidden" id="node-input-subsDeviceList">
+		<select id="node-input-subsDeviceListTemp" onChange="selectedSubsDevicefn(this)">
+			<option>-- Select a Device --</option>
+		</select>
+    </div>
+	<div class="form-row">
+        <label for="node-input-subsDeviceStream"><i class="icon-tag"></i> Streams </label>
+		<input type="hidden" id="node-input-subsDeviceStream">
+        <select id="node-input-subsDeviceStreamTemp" onChange="populateSubsFields(this)">
+			<option>-- Select a Stream --</option>
+		</select>
+    </div>
+	<div class="form-row">
+        <label for="node-input-subsDeviceProtocolType"><i class="icon-tag"></i> Protocol Type </label>
+       <input type="text" id="node-input-subsDeviceProtocolType" class="labels" value=""/>
+    </div>
+	<div class="form-row">
+        <label for="node-input-subsDeviceClientId"><i class="icon-tag"></i> Client ID </label>
+       <input type="text" id="node-input-subsDeviceClientId" class="labels" value=""/>
+    </div>
+	<div class="form-row">
+        <label for="node-input-subsDeviceConsumerTopic"><i class="icon-tag"></i> Consumer Topic </label>
+        <input type="text" id="node-input-subsDeviceConsumerTopic" class="labels" value="" />
+    </div>
+	<hr>
+	<div class="form-row">
+        <label for="node-input-subsDeviceUname"><i class="icon-tag"></i> User Name </label>
+        <input type="text" id="node-input-subsDeviceUname" oninput="getSubsDeviceUname(this)" value="" />
+    </div>
+	<div class="form-row">
+        <label for="node-input-subsDevicePwd"><i class="icon-tag"></i> Password </label>
+        <input type="text" id="node-input-subsDevicePwd" oninput="getSubsDevicePwd(this)" value="" />
+    </div>
+
+	</div>
+</script>
+
+<script type="text/x-red" data-help-name="covs-deviceSubscriber">
+    <p>Create subcriber node to subscribe and consume messages published by the publisher in the COVISINT realm.
+	The received message is added to <code>msg.payload</code></p>
+	<p>
+		<table>
+			<tr>
+				<code>Device</code>: List of devices for which the node will be subscribed.<br>
+			</tr>
+			<tr>
+				<code>Stream</code>: Stream List of the selected device<br>
+			</tr>
+			<tr>
+				<code>Protocol Type</code>: Protocol Type (Eg. MQTT, AMQP, WebSocket, etc).<br>
+			</tr>
+			<tr>
+				<code>Client ID</code>: Client ID for selected stream.<br>
+			</tr>
+			<tr>
+				<code>Consumer Topic</code>: ID of consumer topic for selected stream.<br>
+			</tr>
+			<tr>
+				<code>User Name </code>: User name for the selected type in the realm.<br></tr>
+			<tr>
+				<code>Password</code>: Password for the selected type.<br>
+			</tr>
+		</table>
+	</p>
+</script>

@@ -1,0 +1,40 @@
+{
+  "name": "stcontent",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+	"@covisint/cui.js": "^2.2.3",
+    "express": "4.13.4",
+    "hashmap": "2.0.6",
+    "mqtt": "1.11.2",
+    "socket.io": "1.4.8",
+    "utils": "0.3.1",
+    "winston": "2.2.0",
+    "ws": "1.1.1",
+    "amqplib": "0.4.2",
+    "when": "3.7.7",
+    "node-red": "0.14.6",
+    "grunt": "~0.4.5",
+    "grunt-contrib-copy": "~1.0.0",
+    "node-red-contrib-web-worldmap": "1.0.16",
+    "node-red-dashboard": "*",
+    "node-red-contrib-schedex": "*",
+    "node-red-contrib-file-function": "*",
+    "node-red-contrib-amqp": "*",
+    "node-red-contrib-postgres": "*",
+    "node-red-node-random": "*",
+    "node-red-node-mysql":  "*",
+	"grunt-exec": "1.0.0",
+	"grunt-cli": "*",
+	"traffic":"*"
+  },
+  "devDependencies": {
+    "grunt-exec": "^1.0.0"
+  }
+}

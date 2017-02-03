@@ -1,0 +1,14 @@
+{
+    "name"         : "node-red-contrib-covs-oauth",
+    "version"      : "0.0.1",
+    "description"  : "OAuth 2.0",
+    "dependencies": {
+			"client-oauth2": "2.2.0"
+    },
+    "keywords": [ "node-red" ],
+    "node-red"     : {
+        "nodes": {
+            "covs-oauth": "oauth/oauth.js"
+        }
+    }
+}
